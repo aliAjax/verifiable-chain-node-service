@@ -55,7 +55,11 @@ func (s *State) Snapshot(h chain_domain.Height) map[string]string {
 		c[k] = v
 	}
 	s.versions[h] = c
-	return c
+	out := make(map[string]string, len(c))
+	for k, v := range c {
+		out[k] = v
+	}
+	return out
 }
 func (s *State) Rollback(h chain_domain.Height) error {
 	s.mu.Lock()
@@ -67,6 +71,13 @@ func (s *State) Rollback(h chain_domain.Height) error {
 	s.data = map[string]string{}
 	for k, v := range d {
 		s.data[k] = v
+	}
+	// Prune every version above the target so a later rollback cannot revive
+	// state that was never committed past this height.
+	for vh := range s.versions {
+		if vh > h {
+			delete(s.versions, vh)
+		}
 	}
 	return nil
 }

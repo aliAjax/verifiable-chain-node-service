@@ -33,21 +33,21 @@ func (c *Catalog) Put(s SnapshotRecord) error {
 	if len(c.items) >= c.max {
 		return errors.New("snapshot catalog full")
 	}
-	c.items[s.ID] = s
+	c.items[s.ID] = cloneRecord(s)
 	return nil
 }
 func (c *Catalog) Get(id string) (SnapshotRecord, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	s, ok := c.items[id]
-	return s, ok
+	return cloneRecord(s), ok
 }
 func (c *Catalog) List() []SnapshotRecord {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	o := make([]SnapshotRecord, 0, len(c.items))
 	for _, s := range c.items {
-		o = append(o, s)
+		o = append(o, cloneRecord(s))
 	}
 	sort.Slice(o, func(i, j int) bool { return o[i].Height > o[j].Height })
 	return o
@@ -60,8 +60,22 @@ func (c *Catalog) Verify(id string) bool {
 		return false
 	}
 	s.Verified = checksum(s.Entries) == s.Checksum
-	c.items[id] = s
+	c.items[id] = cloneRecord(s)
 	return s.Verified
+}
+func cloneRecord(s SnapshotRecord) SnapshotRecord {
+	s.Entries = cloneMap(s.Entries)
+	return s
+}
+func cloneMap(d map[string]string) map[string]string {
+	if d == nil {
+		return nil
+	}
+	o := make(map[string]string, len(d))
+	for k, v := range d {
+		o[k] = v
+	}
+	return o
 }
 func checksum(d map[string]string) string {
 	keys := make([]string, 0, len(d))
@@ -79,10 +93,7 @@ func checksum(d map[string]string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 func MakeSnapshot(id string, h chain_domain.Height, d map[string]string) SnapshotRecord {
-	c := map[string]string{}
-	for k, v := range d {
-		c[k] = v
-	}
+	c := cloneMap(d)
 	return SnapshotRecord{ID: id, Height: h, Root: checksum(c), Entries: c, Size: len(c), Checksum: checksum(c), CreatedAt: time.Now().UTC()}
 }
 func (s SnapshotRecord) Valid() bool {

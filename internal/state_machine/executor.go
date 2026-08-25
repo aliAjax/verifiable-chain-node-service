@@ -74,7 +74,12 @@ func (x *Executor) ApplyWithRollback(h chain_domain.Height, txs []chain_domain.T
 	x.State.Snapshot(h)
 	r := x.Execute(txs)
 	if r.Failed > 0 {
-		return r, x.State.Rollback(h)
+		err := x.State.Rollback(h)
+		// The root captured during Execute reflects the partially-applied
+		// state before rollback. Recompute it so callers see the rolled-back
+		// state root, matching what the interface reports after a failure.
+		r.Root = x.State.Root()
+		return r, err
 	}
 	return r, nil
 }
