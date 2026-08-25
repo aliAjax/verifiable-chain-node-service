@@ -39,12 +39,17 @@ func (p *Pool) Stats() Stats {
 }
 func (p *Pool) Expire(now time.Time) int {
 	p.mu.Lock()
-	p.mu.Unlock()
+	defer p.mu.Unlock()
 	n := 0
 	for id, t := range p.tx {
 		if t.ExpiresAt > 0 && time.Unix(t.ExpiresAt, 0).Before(now) {
 			delete(p.tx, id)
-			delete(p.byAcct[t.From], t.Nonce)
+			if accts, ok := p.byAcct[t.From]; ok {
+				delete(accts, t.Nonce)
+				if len(accts) == 0 {
+					delete(p.byAcct, t.From)
+				}
+			}
 			n++
 		}
 	}
@@ -90,7 +95,7 @@ type Reservation struct {
 func NewReservation() *Reservation { return &Reservation{owner: map[string]string{}} }
 func (r *Reservation) Acquire(key, id string) bool {
 	r.mu.Lock()
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 	if x := r.owner[key]; x != "" && x != id {
 		return false
 	}
@@ -99,7 +104,7 @@ func (r *Reservation) Acquire(key, id string) bool {
 }
 func (r *Reservation) Release(key, id string) {
 	r.mu.Lock()
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 	if r.owner[key] == id {
 		delete(r.owner, key)
 	}

@@ -23,9 +23,8 @@ func New(max int) *Pool {
 }
 func (p *Pool) Add(t chain_domain.Tx) error {
 	p.mu.Lock()
-	full := len(p.tx) >= p.max
-	p.mu.Unlock()
-	if full {
+	defer p.mu.Unlock()
+	if len(p.tx) >= p.max {
 		return errors.New("mempool full")
 	}
 	if t.ID == "" {
@@ -49,9 +48,8 @@ func (p *Pool) Add(t chain_domain.Tx) error {
 }
 func (p *Pool) List() []chain_domain.Tx {
 	p.mu.Lock()
-	count := len(p.tx)
-	p.mu.Unlock()
-	out := make([]chain_domain.Tx, 0, count)
+	defer p.mu.Unlock()
+	out := make([]chain_domain.Tx, 0, len(p.tx))
 	for _, t := range p.tx {
 		if t.ExpiresAt > 0 && t.ExpiresAt < time.Now().Unix() {
 			continue
@@ -63,7 +61,7 @@ func (p *Pool) List() []chain_domain.Tx {
 }
 func (p *Pool) Remove(ids []string) {
 	p.mu.Lock()
-	p.mu.Unlock()
+	defer p.mu.Unlock()
 	for _, id := range ids {
 		if t, ok := p.tx[id]; ok {
 			delete(p.tx, id)
