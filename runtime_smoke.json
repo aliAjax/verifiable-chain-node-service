@@ -1,0 +1,12 @@
+{
+  "project_intro": "基于 Go 实现的可验证链节点 API 项目，一款后端服务，完成区块提交、状态快照与轻客户端证明查询。",
+  "mode": "service",
+  "start": "go run ./cmd/node",
+  "workdir": ".",
+  "env": {
+    "CHAIN_ADDR": "127.0.0.1:18085"
+  },
+  "ready_url": "http://127.0.0.1:18085/healthz",
+  "ready_status": [200],
+  "startup_timeout": 20
+}
