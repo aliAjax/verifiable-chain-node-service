@@ -27,7 +27,7 @@ type Entry struct {
 	TraceID string                 `json:"trace_id,omitempty"`
 }
 type Logger struct {
-	mu     sync.Mutex
+	mu     *sync.Mutex
 	out    io.Writer
 	min    Level
 	fields map[string]interface{}
@@ -37,7 +37,7 @@ func NewLogger(out io.Writer, min Level) *Logger {
 	if out == nil {
 		out = os.Stdout
 	}
-	return &Logger{out: out, min: min, fields: map[string]interface{}{}}
+	return &Logger{mu: &sync.Mutex{}, out: out, min: min, fields: map[string]interface{}{}}
 }
 func (l *Logger) With(k string, v interface{}) *Logger {
 	l.mu.Lock()
@@ -47,7 +47,7 @@ func (l *Logger) With(k string, v interface{}) *Logger {
 		f[x] = y
 	}
 	f[k] = v
-	return &Logger{out: l.out, min: l.min, fields: f}
+	return &Logger{mu: l.mu, out: l.out, min: l.min, fields: f}
 }
 func rank(x Level) int {
 	switch x {
@@ -124,5 +124,9 @@ func (c *Counter) Label(k, v string) { c.mu.Lock(); defer c.mu.Unlock(); c.label
 func (c *Counter) Snapshot() map[string]interface{} {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return map[string]interface{}{"name": c.name, "value": c.value, "labels": c.labels}
+	labels := make(map[string]string, len(c.labels))
+	for k, v := range c.labels {
+		labels[k] = v
+	}
+	return map[string]interface{}{"name": c.name, "value": c.value, "labels": labels}
 }
