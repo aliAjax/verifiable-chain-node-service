@@ -13,8 +13,6 @@ type Item struct {
 	Path       []string
 }
 
-var statePathScratch []string
-
 func Build(s *state_machine.State, key string) Item {
 	v, ok := s.Get(key)
 	if !ok {
@@ -26,14 +24,13 @@ func Build(s *state_machine.State, key string) Item {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	p := statePathScratch[:0]
+	p := make([]string, 0, len(keys))
 	for _, k := range keys {
 		if k != key {
 			h := sha256.Sum256([]byte(k + "=" + d[k]))
 			p = append(p, hex.EncodeToString(h[:]))
 		}
 	}
-	statePathScratch = p
 	return Item{Key: key, Value: v, Root: s.Root(), Path: p}
 }
 func Verify(i Item) bool {

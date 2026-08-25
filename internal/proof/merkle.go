@@ -24,16 +24,11 @@ type MerkleProof struct {
 
 func hash(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
 
-var buildTreeKeyScratch = make([]string, 0, 16)
-
 func BuildTree(items map[string]string) *Node {
-	keys := buildTreeKeyScratch[:len(items)]
-	i := 0
+	keys := make([]string, 0, len(items))
 	for k := range items {
-		keys[i] = k
-		i++
+		keys = append(keys, k)
 	}
-	buildTreeKeyScratch = keys
 	sort.Strings(keys)
 	nodes := []*Node{}
 	for _, k := range keys {
@@ -57,9 +52,6 @@ func BuildTree(items map[string]string) *Node {
 }
 func Root(items map[string]string) string { return BuildTree(items).Hash }
 
-var proofHashScratch []string
-var proofStepScratch []Step
-
 func Proof(items map[string]string, key string) (MerkleProof, error) {
 	if _, ok := items[key]; !ok {
 		return MerkleProof{}, errors.New("key not found")
@@ -70,12 +62,11 @@ func Proof(items map[string]string, key string) (MerkleProof, error) {
 	}
 	sort.Strings(keys)
 	index := sort.SearchStrings(keys, key)
-	hashes := proofHashScratch[:0]
+	hashes := make([]string, 0, len(keys))
 	for _, k := range keys {
 		hashes = append(hashes, hash(k+"="+items[k]))
 	}
-	proofHashScratch = hashes
-	steps := proofStepScratch[:0]
+	steps := []Step{}
 	for len(hashes) > 1 {
 		if len(hashes)%2 == 1 {
 			hashes = append(hashes, hashes[len(hashes)-1])
@@ -89,7 +80,6 @@ func Proof(items map[string]string, key string) (MerkleProof, error) {
 		index /= 2
 		hashes = next
 	}
-	proofStepScratch = steps
 	return MerkleProof{Key: key, Value: items[key], Root: hashes[0], Steps: steps, Version: 1}, nil
 }
 func VerifyProof(p MerkleProof) bool {
