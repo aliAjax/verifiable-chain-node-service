@@ -29,6 +29,11 @@ func (i *Index) Add(b chain_domain.Block) error {
 	if _, ok := i.hashes[b.Hash]; ok {
 		return errors.New("hash already indexed")
 	}
+	for _, height := range i.heights {
+		if height == b.Header.Height {
+			return errors.New("height already indexed")
+		}
+	}
 	i.heights = append(i.heights, b.Header.Height)
 	i.hashes[b.Hash] = b.Header.Height
 	i.proposers[b.Header.Proposer] = append(i.proposers[b.Header.Proposer], b.Header.Height)
@@ -82,7 +87,11 @@ func (i *Index) RemoveAbove(h chain_domain.Height) {
 				keep = append(keep, x)
 			}
 		}
-		i.proposers[p] = keep
+		if len(keep) == 0 {
+			delete(i.proposers, p)
+		} else {
+			i.proposers[p] = keep
+		}
 	}
 }
 
@@ -106,6 +115,12 @@ func NewMetaStore() *MetaStore {
 func (s *MetaStore) Put(m BlockMeta) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if old, ok := s.byHeight[m.Height]; ok && old.Hash != m.Hash {
+		delete(s.byHash, old.Hash)
+	}
+	if old, ok := s.byHash[m.Hash]; ok && old.Height != m.Height {
+		delete(s.byHeight, old.Height)
+	}
 	s.byHeight[m.Height] = m
 	s.byHash[m.Hash] = m
 }

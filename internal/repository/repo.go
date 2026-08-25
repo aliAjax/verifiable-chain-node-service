@@ -21,6 +21,11 @@ func (r *Repo) PutBlock(b chain_domain.Block) error {
 	if _, ok := r.blocks[b.Header.Height]; ok {
 		return errors.New("block exists")
 	}
+	for _, existing := range r.blocks {
+		if existing.Hash != "" && existing.Hash == b.Hash {
+			return errors.New("block hash exists")
+		}
+	}
 	r.blocks[b.Header.Height] = cloneBlock(b)
 	return nil
 }
