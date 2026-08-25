@@ -38,14 +38,33 @@ func (l *Log) Events() []Event {
 	return append([]Event(nil), l.events...)
 }
 func (l *Log) AppendBatch(bus *Bus, entries []Entry) error {
+	appended := 0
 	for i, entry := range entries {
 		id := fmt.Sprintf("audit-batch-%d", i)
 		bus.SubscribeBuffer(id, 1)
-		defer bus.Unsubscribe(id)
 		event := l.Append(entry.Action, entry.Detail)
+		appended++
 		if err := bus.Publish(Record{At: event.At, Action: event.Action, Payload: event.Detail, Hash: event.Hash}); err != nil {
+			bus.Unsubscribe(id)
+			l.rollback(appended)
 			return err
 		}
+		bus.Unsubscribe(id)
 	}
 	return nil
+}
+
+func (l *Log) rollback(n int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if n <= 0 || n > len(l.events) {
+		return
+	}
+	orig := len(l.events)
+	l.events = l.events[:orig-n]
+	if orig == n {
+		l.prev = ""
+	} else {
+		l.prev = l.events[len(l.events)-1].Hash
+	}
 }

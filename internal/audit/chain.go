@@ -107,14 +107,14 @@ func (b *Bus) SubscribeBuffer(id string, size int) chan Record {
 	}
 	return ch
 }
-func (b *Bus) Publish(r Record) (err error) {
+func (b *Bus) Publish(r Record) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	defer func() { err = nil }()
 	for id, s := range b.subs {
 		select {
 		case s.Ch <- r:
 		default:
+			close(s.Ch)
 			delete(b.subs, id)
 			return fmt.Errorf("subscriber %s: %w", id, ErrDelivery)
 		}
@@ -147,11 +147,23 @@ type RecordInput struct {
 }
 
 func (c *Chain) AppendBatch(bus *Bus, inputs []RecordInput) error {
+	appended := 0
 	for _, input := range inputs {
 		record := c.Append(input.Actor, input.Action, input.Resource, input.Payload)
+		appended++
 		if err := bus.Publish(record); err != nil {
+			c.rollback(appended)
 			return err
 		}
 	}
 	return nil
+}
+
+func (c *Chain) rollback(n int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if n <= 0 || n > len(c.records) {
+		return
+	}
+	c.records = c.records[:len(c.records)-n]
 }
