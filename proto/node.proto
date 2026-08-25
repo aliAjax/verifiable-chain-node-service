@@ -1,0 +1,15 @@
+syntax = "proto3";
+package chain.v1;
+option go_package = "verifiable-chain-node/gen/node/v1";
+message Transaction { string id=1; string from=2; string to=3; uint64 nonce=4; uint64 fee=5; uint64 gas=6; string key=7; string value=8; }
+message BlockRequest { uint64 height=1; }
+message BlockResponse { uint64 height=1; string hash=2; string state_root=3; }
+message Peer { string id=1; string address=2; int32 score=3; }
+message Vote { string validator=1; uint64 height=2; uint64 view=3; string type=4; string signature=5; }
+message BroadcastRequest { bytes payload=1; }
+message BroadcastResponse { bool accepted=1; string error=2; }
+message SyncRequest { uint64 from=1; uint64 to=2; string peer=3; }
+message SyncResponse { uint64 downloaded=1; uint64 verified=2; string status=3; }
+service Node { rpc Broadcast(BroadcastRequest) returns (BroadcastResponse); rpc Sync(SyncRequest) returns (SyncResponse); }
+service Consensus { rpc Vote(Vote) returns (BroadcastResponse); }
+service Light { rpc VerifyProof(BlockRequest) returns (BlockResponse); }
