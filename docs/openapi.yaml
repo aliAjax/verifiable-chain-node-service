@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: Verifiable Chain Node API
+  version: 1.0.0
+paths:
+  /healthz:
+    get:
+      responses: {"200": {description: healthy}}
+  /api/v1/networks:
+    get:
+      responses: {"200": {description: networks}}
+  /api/v1/peers:
+    get: {responses: {"200": {description: peers}}}
+    post: {responses: {"201": {description: peer accepted}}}
+  /api/v1/transactions:
+    post:
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/Transaction'}}}}
+      responses: {"202": {description: accepted}, "409": {description: rejected}}
+  /api/v1/mempool:
+    get: {responses: {"200": {description: mempool}}}
+  /api/v1/blocks/mine:
+    post: {responses: {"201": {description: block committed}}}
+  /api/v1/blocks/{height}:
+    get: {parameters: [{name: height, in: path, required: true, schema: {type: integer}}], responses: {"200": {description: block}}}
+  /api/v1/sync:
+    post: {responses: {"202": {description: sync scheduled}}}
+  /api/v1/snapshots:
+    get: {responses: {"200": {description: snapshots}}}
+    post: {responses: {"201": {description: snapshot created}}}
+  /api/v1/snapshots/{id}/verify:
+    post: {responses: {"200": {description: verification result}}}
+  /api/v1/proofs/{key}:
+    get: {responses: {"200": {description: proof}}}
+  /api/v1/light/checkpoints:
+    get: {responses: {"200": {description: checkpoints}}}
+components:
+  schemas:
+    Transaction:
+      type: object
+      required: [from, to, nonce, fee, gas, key, value]
+      properties:
+        id: {type: string}
+        from: {type: string}
+        to: {type: string}
+        nonce: {type: integer, format: uint64}
+        fee: {type: integer, format: uint64}
+        gas: {type: integer, format: uint64}
+        key: {type: string}
+        value: {type: string}
